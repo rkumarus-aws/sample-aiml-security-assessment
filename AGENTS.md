@@ -43,6 +43,9 @@ export AWS_SECRET_ACCESS_KEY=testing
 # Core suite — one session covers every package under tests/
 .venv/bin/python -m pytest tests/ -v --tb=short
 
+# assessment_history package — keep 100% line and branch coverage
+.venv/bin/python -m pytest tests/test_assessment_history_*.py --cov=assessment_history --cov-branch --cov-report=term-missing --cov-fail-under=100
+
 # Responsible AI GRC suite — separate session (lives outside tests/, own conftest)
 .venv/bin/python -m pytest aiml-security-assessment/functions/security/responsible_ai_grc_tests/ -v --tb=short
 
@@ -108,6 +111,7 @@ Prefix every command with `.venv/bin/` explicitly (rather than relying on `sourc
 - **IAM policy `Statement` is a dict *or* a list.** Both forms are valid IAM. Iterating `_policy_document(policy).get("Statement", [])` directly walks dict *keys* when a policy has a single statement object, silently skipping it and under-reporting overly permissive grants. Normalize through a helper — `_policy_statements()` in `agent_registry_assessments/app.py` — and cover both shapes in tests.
 - **The report's Assessment Scope block is patched by post-render string replacement.** `generate_html_report()` in `report_template.py` injects service chips and the lens-source sentence with `str.replace()` against exact HTML substrings from the template literal (see the `base_scope_source` and `AWS Agent Registry` chip replacements). Adding or renaming an assessment area means updating the template literal **and** every replace anchor that targets it. A drifted anchor fails silently: `str.replace` matches nothing, and the chip or sentence just never appears. Verify by generating a report, not by reading the code.
 - **Never use real AWS identifiers in repository artifacts.** Tests, fixtures, documentation examples, snapshots, and generated sample reports must use synthetic account IDs, organization IDs, ARNs, and resource identifiers. Never copy identifiers from live accounts, logs, assessment output, screenshots, prompts, or reproduction evidence into committed files. Prefer the established synthetic account IDs `123456789012`, `111122223333`, and `444455556666`, and patterned organization IDs such as `o-a1b2c3d4e5` and `o-f6g7h8i9j0`. When a change introduces or modifies identifiers, scan the changed files before committing and verify that every value is synthetic.
+- **`assessment_history/` (changes since last assessment) reads only the findings CSVs in the central bucket and must never fail a build.** `buildspec.yml`'s `run_changes_report` wraps it (warnings only, a time limit, skipped when little build time is left), and it only reads the multi-account failure ledger, never writes it. Keep 100% line and branch coverage for the package. A scanner that writes a day count or date into `Finding_Details` must be registered in `assessment_history/normalize.py`; `tests/test_assessment_history_normalize.py` fails until it is. After changing a sample report or a comparison rule, rerun `sample-reports/scripts/build_changes_sample.py` and review the golden diff. Details: `docs/ASSESSMENT_HISTORY.md`.
 
 ### Status / error semantics
 
@@ -146,5 +150,6 @@ When reviewing a diff that touches assessment code or policies, verify, in order
   - "Report Verification (Required Before Opening a PR)" — mandatory HTML report generation and visual verification for any new check, lens, or compliance standard
 - `docs/SECURITY_CHECKS.md` / `docs/SECURITY_CHECKS_RESPONSIBLE_AI_GRC.md` / `docs/SECURITY_CHECKS_OWASP.md` — authoritative check inventory. Check counts appear in five places and must move in lockstep: this file's "What this is" paragraph, `README.md`, `docs/DEVELOPER_GUIDE.md`, and both the intro paragraph and per-service table in `docs/SECURITY_CHECKS.md`. Section headings carry their count (`## AWS Agent Registry Security Checks (8)`), so changing a count changes the anchor — re-check every `SECURITY_CHECKS.md#...` deep link in `README.md` and the table of contents.
 - `docs/RESPONSIBLE_AI_GRC_SCOPE.md` / `docs/RESPONSIBLE_AI_GRC_ALIAS_MIGRATION.md` — scope and legacy FinServ alias behavior.
+- `docs/ASSESSMENT_HISTORY.md` — changes-since-last-assessment report: how the previous run is chosen, matching rules, output files, and the `EnableAssessmentHistory` setting.
 - `docs/TROUBLESHOOTING.md` — runtime/deployment debugging.
 - `CHANGELOG.md` — user-facing release history and the authoritative deployment actions for `Unreleased` and tagged versions.
