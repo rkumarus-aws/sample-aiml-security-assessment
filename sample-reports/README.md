@@ -36,7 +36,7 @@ Screenshots used in the main README to showcase report features:
 | `multi-account-summary.png` | Multi-account consolidated view |
 | `changes-overview.png` | Changes since last assessment (captured by `scripts/capture_changes_screenshot.py`) |
 
-**Total size:** ~685 KB (optimized for web)
+**Total size:** ~910 KB for the 5 screenshots (optimized for web)
 
 ### Developer Tools
 
